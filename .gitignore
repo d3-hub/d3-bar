@@ -1,0 +1,11 @@
+.idea
+*.iml
+npm-debug.log
+node_modules
+.DS_Store
+jsconfig.json
+.tags
+.tags1
+__tmp
+package-lock.json
+dist
