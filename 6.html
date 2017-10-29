@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style>
+        body {
+            background-color: lightcyan;
+            font: 10px sans-serif;
+            margin: 30px;
+            color: steelblue;
+        }
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+        .bar {
+            fill: steelblue;
+        }
+        .bar:hover {
+            fill: orangered;
+        }
+        .x.axis path {
+            display: none;
+        }
+        .d3-tip {
+            line-height: 2;
+            font-weight: bold;
+            padding: 12px;
+            font-size: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border-radius: 2px;
+        }
+        /* Creates a small triangle extender for the tooltip */
+        .d3-tip:after {
+            box-sizing: border-box;
+            display: inline;
+            font-size: 10px;
+            width: 100%;
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.8);
+            content: "\25BC";
+            position: absolute;
+            text-align: center;
+        }
+        /* Style northward tooltips differently */
+        .d3-tip.n:after {
+            margin: -1px 0 0 0;
+            top: 100%;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-tip/0.7.1/d3-tip.js"></script>
+<script>
+  var dataSourceUrl = 'https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/GDP-data.json';
+  $('document').ready(function() {
+
+    var formatCurrency = d3.format("$,.2f");
+    var margin = {
+        top: 20,
+        right: 20,
+        bottom: 30,
+        left: 40
+      },
+      width = 960 - margin.left - margin.right,
+      height = 500 - margin.top - margin.bottom;
+    var chart = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    var x = d3.scaleTime().range([0, width]),
+      y = d3.scaleLinear().range([height, 0]);
+
+    var tip = d3.tip().attr('class', 'd3-tip').offset([-10, 0]) // offset设置距离当前rect顶部的距离
+      .html(function(d) {
+        var currentDateTime = new Date(d[0]);
+        var year = currentDateTime.getFullYear();
+        return "<strong> " + formatCurrency(+d[1]) + " &nbsp;Billion</strong> <BR> <span style='color:lightgreen'>" + year + ' - ' + currentDateTime.toLocaleString("en-us", {
+            month: "long"
+          }) + "</span>";
+      })
+
+    d3.json(dataSourceUrl, function(err, data) {
+      if (err) throw err;
+      var data = data.data;
+
+      x.domain([new Date(data[0][0]), new Date(data[data.length - 1][0])])
+      y.domain([0, d3.max(data, function(d) {
+        return d[1];
+      })]);
+
+      chart.append("g")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x));
+
+      chart.append("g")
+        .call(d3.axisLeft(y))
+
+      chart.call(tip)
+      chart.selectAll(".bar")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", function(d) {
+          return x(new Date(d[0]));
+        })
+        .attr("y", function(d) {
+          return y(d[1]);
+        })
+        .attr("height", function(d) {
+          return height - y(d[1]);
+        })
+        .attr("width", 3)
+        .on('mouseover', tip.show)
+        .on('mouseout', tip.hide)
+    });
+  });
+</script>
+</body>
+</html>
