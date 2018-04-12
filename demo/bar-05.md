@@ -1,0 +1,269 @@
+# 柱图05
+
+## 说明
+- 支持数据更新
+
+
+## 知识点
+- `d3.schemeCategory20` 20种分类颜色
+
+## 代码
+````html:500
+<!doctype html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <title>Document</title>
+    <style>
+        body,html{
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            font-size: 0.95em;
+            text-align: center;
+        }
+        #chart{
+            background-color: #F5F2EB;
+            border: 1px solid #CCC;
+        }
+        .bar{
+            fill: purple;
+            shape-rendering: crispEdges;
+        }
+        .bar-label{
+            fill: #000;
+            text-anchor: middle;
+            font-size: 18px;
+        }
+        .axis path,
+        .axis line{
+            fill: none;
+            stroke: #ccc;
+            shape-rendering: crispEdges;
+        }
+    </style>
+</head>
+<body>
+<script src='https://d3js.org/d3.v4.min.js'></script>
+<script>
+  const data = [
+    {key: 'Glazed',     value: 132},
+    {key: 'Jelly',      value: 71},
+    {key: 'Holes',      value: 337},
+    {key: 'Sprinkles',  value: 93},
+    {key: 'Crumb',      value: 78},
+    {key: 'Chocolate',  value: 43},
+    {key: 'Coconut',    value: 20},
+    {key: 'Cream',      value: 16},
+    {key: 'Cruller',    value: 30},
+    {key: 'Éclair',     value: 8},
+    {key: 'Fritter',    value: 17},
+    {key: 'Bearclaw',   value: 21}
+  ]
+  const w = 800
+  const h = 450
+  const margin = {top: 58, bottom: 100, left: 80, right: 40}
+  const width = w - margin.left - margin.right
+  const height = h - margin.top - margin.bottom
+
+  // x轴比例尺
+  const x = d3.scaleBand()   // d3.scaleBand - 创建序数段比例尺
+    .domain(data.map(item => item.key))
+    .padding(0.5)
+    .rangeRound([0, width])
+
+  // y轴比例尺
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(data, d => d.value)])
+    .range([height, 0])
+
+  // d3.scaleOrdinal - 创建一个序数比例尺, d3.schemeCategory20 - 20种分类颜色
+  const ordinalColorScale = d3.scaleOrdinal(d3.schemeCategory20)
+
+  const xAxis = d3.axisBottom(x)
+  const yAxis = d3.axisLeft(y)
+               .tickSize(-width)
+
+  const svg = d3.select('body').append('svg')
+    .attr('id', 'chart')
+    .attr('width', w)
+    .attr('height', h)
+
+  const chart = svg.append('g')
+    .classed('display', true)
+    .attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+  /********************  render y轴/备注文字 ******************/
+
+  // y轴
+  chart.append('g')
+    .classed('y axis', true)
+    .attr('transform', 'translate(0,0)')
+    .call(yAxis)
+
+  // 添加y轴备注文字
+  chart.select('.y.axis')
+    .append('text')
+    .style('stroke', 'black')
+    .style('font-size', '18px')
+    .attr('x', 0)
+    .attr('y', 0)
+    .style('text-anchor', 'middle')
+    .attr('transform', `translate(-50, ${height/2}) rotate(-90)`)
+    .text('Units sold')
+
+
+  // 放在这里是防止贯穿线在柱图之上)
+  chart.append('g')
+    .attr('class', 'bar-Container')
+
+  /********************  render 按钮 ******************/
+
+  const controls = d3.select('body')
+    .append('div')
+    .attr('id','controls')
+
+  const sort_btn = controls.append('button')
+    .html('Sort data: acending')
+    .attr('state',0)
+
+
+  function drawAxis(params){
+
+    // 初始化加载
+    if(params.initialize){
+
+      /********************  render x轴 / 变换文字位置 / x轴title ******************/
+
+      this.append('g')
+        .classed('x axis', true)
+        .attr('transform',`translate(0, ${height})`)
+        .call(params.axis.x)
+        .selectAll('text')
+        .classed('x-axis-label', true)
+        .style('text-anchor', 'end')
+        .attr('dx', -8)
+        .attr('dy', 8)
+        .attr('transform', 'translate(0,0) rotate(-45)')
+
+      this.select('.x.axis')
+        .append('text')
+        .style('stroke', 'black')
+        .style('font-size', '18px')
+        .attr('x', 0)
+        .attr('y', 0)
+        .style('text-anchor', 'middle')
+        .attr('transform', `translate(${width/2}, 80)`)
+        .text('Donut type')
+
+    } else if(params.initialize === false){
+      // 更新x轴
+      this.selectAll('g.x.axis')
+        .call(params.axis.x)
+      // 更新y轴
+      this.selectAll('g.y.axis')
+        .call(params.axis.y)
+    }
+
+  }
+
+  function plot(params){
+    // 更新x轴y轴比例尺的定义域
+    x.domain(params.data.map(entry => entry.key))
+    y.domain([0, d3.max(params.data, d => d.value)])
+
+    drawAxis.call(this, params) // this => chart
+
+    /******** 添加柱图 ************/
+
+    const barContainer = this.select('.bar-Container')
+
+    barContainer.selectAll('.bar')
+      .data(params.data)
+      .enter()
+      .append('rect')
+      .classed('bar', true)
+      .on('mouseover', function(d,i){
+        d3.select(this).style('fill', 'black')
+      })
+      .on('mouseout', function(d,i){
+        d3.select(this).style('fill', ordinalColorScale(i))
+      })
+
+    barContainer.selectAll('.bar-label')
+      .data(params.data)
+      .enter()
+      .append('text')
+      .classed('bar-label', true)
+
+    //update
+    barContainer.selectAll('.bar')
+      .transition()
+      .attr('x', (d,i) => x(d.key))
+      .attr('y', (d,i) => y(d.value))
+      .attr('height', (d,i) => height - y(d.value))
+      .attr('width', d => x.bandwidth())
+      .style('fill', (d,i) => ordinalColorScale(i))
+
+    barContainer.selectAll('.bar-label')
+      .transition()
+      .attr('x', (d,i) => x(d.key) + (x.bandwidth() / 2))
+      .attr('dx', -3)
+      .attr('y', (d,i) => y(d.value))
+      .attr('dy', -2)
+      .text(d => d.value)
+
+    //exit()
+    barContainer.selectAll('.bar')
+      .data(params.data)
+      .exit()
+      .remove()
+
+    barContainer.selectAll('.bar-label')
+      .data(params.data)
+      .exit()
+      .remove()
+  }
+
+  sort_btn.on('click', function() {
+    const self = d3.select(this)
+    const ascending = (a,b) => a.value - b.value
+    const descending = (a,b) => b.value - a.value
+
+    let state = +self.attr('state')
+    let txt = 'Sort data: '
+    if(state === 0){
+      data.sort(ascending)
+      state = 1
+      txt += 'descending'
+    } else if(state === 1){
+      data.sort(descending)
+      state = 0
+      txt += 'ascending'
+    }
+    self.attr('state', state)
+    self.html(txt)
+    plot.call(chart, {
+      data: data,
+      axis:{
+        x: xAxis,
+        y: yAxis
+      },
+      initialize: false
+    })
+  })
+
+  // 初次更新图表
+  plot.call(chart, {
+    data: data,
+    axis:{
+      x: xAxis,
+      y: yAxis
+    },
+    initialize: true
+  })
+
+</script>
+</body>
+</html>
+````

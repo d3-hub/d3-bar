@@ -21,18 +21,25 @@
 
   var index = function(ref) {
     if (ref === void 0) ref = {};
+
     var sandbox = ref.sandbox;
     if (sandbox === void 0) sandbox = 'allow-modals allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts';
+
     var prepend = ref.prepend;
     if (prepend === void 0) prepend = '';
+
     var append = ref.append;
     if (append === void 0) append = '';
+
     var match = ref.match;
     if (match === void 0) match = /^`{4}(.*?)[\n\r]+([\s\S]*?)[\n\r]+`{4}/gm;
+
     var showSourceCode = ref.showSourceCode;
     if (showSourceCode === void 0) showSourceCode = true;
+
     var surfaceAPI = ref.surfaceAPI;
     if (surfaceAPI === void 0) surfaceAPI = ['Prism', 'fetch'];
+
     var parseContent = ref.parseContent;
     if (parseContent === void 0) parseContent = defaultParseContent;
 
@@ -107,6 +114,7 @@
           }
 
           var doc = iframe.contentWindow.document;
+
           doc.open().write(node.content);
           doc.close();
         }
