@@ -1,7 +1,8 @@
 const demos = [
   { title: '总览', path: '/demo/overview'},
-  { title: '柱图01', path: '/demo/bar-01'},
+  { title: '柱图03', path: '/demo/bar-03'},
   { title: '柱图02', path: '/demo/bar-02'},
+  { title: '柱图01', path: '/demo/bar-01'},
 ]
 
 docute.init({

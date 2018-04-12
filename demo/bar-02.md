@@ -30,7 +30,6 @@
 <div id="chartContainer"></div>
 
 <script src="https://d3js.org/d3.v4.min.js"></script>
-<script src="https://d3js.org/d3-selection-multi.v1.min.js"></script>
 <script>
   // 定义数据
   const data = [
