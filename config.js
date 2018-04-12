@@ -1,6 +1,6 @@
 const demos = [
-  {title: '总览', path: 'demos/overview'},
-  { title: '单柱图', path: '/demos/single-bar'},
+  { title: '总览', path: '/demos/overview'},
+  { title: '柱图01', path: '/demos/single-bar'},
 ]
 
 docute.init({
