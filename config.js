@@ -1,5 +1,6 @@
 const demos = [
   { title: '总览', path: '/demo/overview'},
+  { title: '柱图06', path: '/demo/bar-06'},
   { title: '柱图05', path: '/demo/bar-05'},
   { title: '柱图04', path: '/demo/bar-04'},
   { title: '柱图03', path: '/demo/bar-03'},

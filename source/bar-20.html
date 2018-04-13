@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="zh-cn">
+<meta charset="utf-8">
+<head>
+    <style> /* set the CSS */
+    body {
+        font-family: arial;
+        color: #9CA9B3;
+    }
+
+    .container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 868px;
+        height: 360px;
+        margin-top: -200px;
+        margin-left: -434px;
+        border: 1px solid #e9edf0;
+        border-radius: 3px;
+    }
+    </style>
+</head>
+<body>
+<input name="addedButton" type="button" value="Added" onclick="toggleAdded()"/>
+<input name="edjectedButton" type="button" value="Ejected" onclick="toggleEjected()"/>
+<input name="convertedButton" type="button" value="Converted" onclick="toggleConverted()"/>
+
+<div class="container" id="cc"></div>
+
+<!-- load the d3.js library -->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+  function rightRoundedRect(x, y, w, h, r, tl, tr, bl, br) {
+    let retval;
+    retval = `M${x + r},${y}`;
+    retval += `h${w - 2 * r}`;
+    if (tr) {
+      retval += `a${r},${r} 0 0 1 ${r},${r}`;
+    }
+    else {
+      retval += `h${r}`;
+      retval += `v${r}`;
+    }
+    retval += `v${h - 2 * r}`;
+    if (br) {
+      retval += `a${r},${r} 0 0 1 ${-r},${r}`;
+    }
+    else {
+      retval += `v${r}`;
+      retval += `h${-r}`;
+    }
+    retval += `h${2 * r - w}`;
+    if (bl) {
+      retval += `a${r},${r} 0 0 1 ${-r},${-r}`;
+    }
+    else {
+      retval += `h${-r}`;
+      retval += `v${-r}`;
+    }
+    retval += `v${2 * r - h}`;
+    if (tl) {
+      retval += `a${r},${r} 0 0 1 ${r},${-r}`;
+    }
+    else {
+      retval += `v${-r}`;
+      retval += `h${r}`;
+    }
+    retval += "z";
+    return retval;
+  }
+
+  let data = [
+    {date: '2016-01-01', added: 100, converted: 88, ejected: 10},
+    {date: '2016-01-02', added: 160, converted: 8, ejected: 45},
+    {date: '2016-01-03', added: 140, converted: 18, ejected: 20},
+    {date: '2016-01-04', added: 150, converted: 68, ejected: 10},
+    {date: '2016-01-05', added: 50, converted: 88, ejected: 10},
+    {date: '2016-01-06', added: 50, converted: 78, ejected: 10},
+    {date: '2016-01-07', added: 80, converted: 18, ejected: 30},
+    {date: '2016-01-08', added: 50, converted: 8, ejected: 2},
+    {date: '2016-01-09', added: 80, converted: 9, ejected: 10},
+    {date: '2016-01-10', added: 40, converted: 19, ejected: 10},
+    {date: '2016-01-11', added: 50, converted: 12, ejected: 1},
+    {date: '2016-01-12', added: 20, converted: 31, ejected: 10},
+    {date: '2016-01-13', added: 50, converted: 12, ejected: 10},
+    {date: '2016-01-14', added: 50, converted: 17, ejected: 10},
+    {date: '2016-01-15', added: 50, converted: 12, ejected: 1},
+    {date: '2016-01-16', added: 100, converted: 22, ejected: 10},
+    {date: '2016-01-17', added: 110, converted: 12, ejected: 10},
+    {date: '2016-01-18', added: 10, converted: 12, ejected: 20},
+    {date: '2016-01-19', added: 150, converted: 34, ejected: 10},
+    {date: '2016-01-20', added: 50, converted: 23, ejected: 10},
+    {date: '2016-01-21', added: 150, converted: 11, ejected: 10},
+    {date: '2016-01-22', added: 50, converted: 7, ejected: 10},
+    {date: '2016-01-23', added: 150, converted: 1, ejected: 10},
+    {date: '2016-01-24', added: 50, converted: 2, ejected: 10},
+    {date: '2016-01-25', added: 20, converted: 12, ejected: 1},
+    {date: '2016-01-26', added: 50, converted: 3, ejected: 10},
+    {date: '2016-01-27', added: 50, converted: 12, ejected: 10},
+    {date: '2016-01-28', added: 10, converted: 20, ejected: 15},
+    {date: '2016-01-29', added: 50, converted: 31, ejected: 10},
+    {date: '2016-01-30', added: 50, converted: 20, ejected: 5},
+  ];
+
+  /** 将字符串解析成时间对象 **/
+  const parse = d3.timeParse('%Y-%m-%d');
+  /** d3.bisector-查找-使用访问器和比较器二分查找 , .left 使用给定的比较器的bisectLeft */
+  const bisectDate = d3.bisector(d => d.date).left;
+
+  // data manipulation first
+  data = data.map(datum => {
+    datum.date = parse(datum.date);
+    return datum;
+  });
+
+  const margin = {
+    top: 40,
+    right: 24,
+    bottom: 58,
+    left: 24,
+    graphOffset: 32,
+  };
+
+  const d3Container = d3.select('.container');
+  const width = 868;
+  const height = 260;
+  let showAdded = true;
+  let showEjected = true;
+  let showConverted = true;
+
+  const svgGuides = d3Container.append('svg')
+    .style('position', 'absolute')
+    .style('top', '0')
+    .style('left', '0')
+    .attr('width', width)
+    .attr('height', height + margin.top + margin.bottom);
+
+  const svgCurve = d3Container.append('svg')
+    .style('position', 'absolute')
+    .style('top', '0')
+    .style('left', margin.left + margin.graphOffset)
+    .attr('width', width - (margin.left + margin.right + margin.graphOffset))
+    .attr('height', height + margin.top + margin.bottom);
+
+  const svgCl = d3Container.append('svg')
+    .style('position', 'absolute')
+    .style('top', '0')
+    .attr("id", "cvg_svgCl")
+    .style('left', margin.left + margin.graphOffset)
+    .attr('width', width - (margin.left + margin.right + margin.graphOffset))
+    .attr('height', height + margin.top + margin.bottom)
+    .attr('pointer-events', 'none');
+
+  // hover的提示框显示的样式
+  const svgTooltips = d3Container.append('svg')
+    .style('position', 'absolute')
+    .style('top', '0')
+    .style('left', '0')
+    .attr('width', 235)
+    .attr('height', 150)
+    .style("display", "none");
+
+  const barWidth = 12;
+
+  /** d3.scaleTime - 创建时间线性比例尺 */
+  const x = d3.scaleTime()
+    .domain([data[0].date, data[data.length - 1].date])
+    .range([0, width - (margin.left + margin.right + margin.graphOffset + barWidth)]);
+
+  const xCurve = d3.scaleTime()
+    .domain([data[0].date, data[data.length - 1].date])
+    .range([0, width - (margin.left + margin.right + margin.graphOffset - 4)]);
+
+  // Compute the minimum and maximum date, and the maximum price.
+  /** d3.scaleLinear - 创建定量线性比例尺 */
+  const y = d3.scaleLinear()
+    .domain([
+      -d3.max(data, d => d.ejected), d3.max(data, d => d.added)
+    ])
+    .range([height, 0]);
+
+  // 网格线
+  /**
+   * d3.axisRight 创建一个右部轴生成器
+   * .ticks  自定义刻度的生成和格式化方式
+   * .tickSize 设置刻度的大小
+   */
+  const vAxis = d3.axisRight(y)
+    .ticks(10)                  // 刻度的数量
+    .tickSize(0);             // 刻度线的长度
+
+  // y轴刻度
+  const verticalGuide = svgGuides.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+  vAxis(verticalGuide);
+  verticalGuide.selectAll('text').attr("fill", "#9CA9B3").attr("dy", -5).attr("dx", 0); // 设置y轴刻度文字的颜色和位置
+  verticalGuide.selectAll('path').attr("stroke", "none"); // y轴线设为不可见
+
+  // gridlines in y axis function
+  function make_y_gridlines() {
+    return d3.axisLeft(y).ticks(10)
+  }
+
+  const gridSvg = svgGuides.append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+  // add the Y gridlines
+  gridSvg.append('g')
+    .call(make_y_gridlines()
+      .tickSize(-width + margin.left + margin.right)
+      .tickFormat("")
+    )
+  gridSvg.selectAll('line')
+    .attr("stroke", "#f5f6f8")
+    .attr("shape-rendering", "crispEdges");
+  gridSvg.selectAll('path')
+    .attr("stroke-width", "0");
+
+  const area = d3.area()
+    .curve(d3.curveMonotoneX)
+    .x(d => xCurve(d.date))
+    .y0(y([0]))
+    .y1(d => y(d.converted));
+
+  const areaLine = d3.line()
+    .curve(d3.curveMonotoneX)
+    .x(d => xCurve(d.date))
+    .y(d => y(d.converted));
+
+  const startData = data.map(datum => ({
+    date: datum.date,
+    converted: 0
+  }));
+
+  // added data
+  const addedData = svgCurve.selectAll(".addedData")
+    .data(data)
+    .enter()
+    .append("g")
+    .attr('transform', `translate(${0}, ${margin.top})`)
+    .attr("class", "addedData");
+
+  addedData.append("path")
+    .attr("class", "addedLine")
+    .attr("d", (data, i) => {
+      return rightRoundedRect(x(data.date) - 0, y([0]), barWidth, 0, 3, true, true, false, false)
+    })
+    .attr('fill', '#104e6b')
+    .style("opacity", 1.0)
+    .transition()
+    .attr("d", (data, i) => {
+      return rightRoundedRect(x(data.date) - 0, y(data.added), barWidth, (y([0]) - y(data.added)), 3, true, true, false, false)
+    })
+    .delay((data, i) => i * 0)
+    .duration(1000)
+    .ease(d3.easeCubic)
+
+  //ejected
+  const ejectData = svgCurve.selectAll(".ejectData")
+    .data(data)
+    .enter()
+    .append("g")
+    .attr('transform', `translate(${0}, ${margin.top})`)
+    .attr("class", "ejectData");
+
+  ejectData.append("path")
+    .attr("class", "ejectLine")
+    .attr("d", (data, i) => {
+      return rightRoundedRect(x(data.date), y([0]), barWidth, 0, 3, false, false, true, true)
+    })
+    .attr('fill', '#3ed234')
+    .style("opacity", 1.0)
+    .transition()
+    .attr("d", (data, i) => {
+      return rightRoundedRect(x(data.date), y([0]), barWidth, y([0]) - y(data.ejected), 3, false, false, true, true)
+    })
+    .delay((data, i) => i * 0)
+    .duration(1000)
+    .ease(d3.easeCubic)
+
+  svgCurve.append("svg:clipPath")
+    .attr("id", "clip")
+    .append("rect")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("height", y([0]) - 1)
+    .attr("width", width - 0)
+    .attr("fill", "none")
+
+  const path = svgCl.append("svg:path")
+    .attr('transform', `translate(${-2}, ${margin.top})`)
+    .attr("d", areaLine(data))
+    .attr("fill", "none")
+    .attr('stroke', 'none')
+    .attr('stroke-width', '0');
+
+  // converted the path
+  const convertedLine = svgCl
+    .append("g")
+    .attr("class", "convertedAreaGStroke")
+    .append('path')
+    .attr('transform', `translate(${-2}, ${margin.top})`)
+    .datum(startData)
+    .attr('d', areaLine)
+    .attr("class", "convertedAreaDStroke")
+    .attr('fill', 'none')
+    .attr('stroke', '#0FACF3')
+    .attr('stroke-width', '2')
+    .attr('stroke-alignment', 'outside')
+    .attr("clip-path", (d, i) => "url(#clip)")
+    .transition()
+    .duration(1000)
+    .attrTween('d', () => {
+      const interpolator = d3.interpolateArray(startData, data);
+
+      return t => area(interpolator(t))
+    });
+
+  const convertedArea = svgCl
+    .append("g")
+    .attr("class", "convertedAreaG")
+    .attr('transform', `translate(${0}, ${margin.top})`)
+    .append('path')
+    .datum(startData)
+    .attr('d', area)
+    .attr("class", "convertedAreaD")
+    .attr('fill', '#0FACF3')
+    .style("opacity", 0.2)
+    .transition()
+    .duration(1000)
+    .attrTween('d', () => {
+      const interpolator = d3.interpolateArray(startData, data);
+
+      return t => area(interpolator(t))
+    });
+
+  // text
+  svgCurve.append("text")
+    .attr("x", (0))
+    .attr('y', height + margin.top + margin.bottom - 16)
+    .attr("text-anchor", "left")
+    .style("font-size", "11px")
+    .style("fill", "#9CA9B3")
+    .style("text-decoration", "none")
+    .attr("class", "shadow")
+    .text("12th Oct 2016");
+
+  // text end date
+  svgCurve.append("text")
+    .attr("x", (width - 155))
+    .attr('y', height + margin.top + margin.bottom - 16)
+    .attr("text-anchor", "right")
+    .style("font-size", "11px")
+    .style("fill", "#9CA9B3")
+    .style("text-decoration", "none")
+    .attr("class", "shadow")
+    .text("12th Nov 2016");
+
+  // TOOLTIPS
+  const focus = svgCl.append("g")
+    .attr('transform', `translate(${0}, ${margin.top})`)
+    .style("display", "none");
+
+  // append the x line
+  focus.append("line")
+    .attr("class", "x")
+    .style("stroke", "#0FACF3")
+    .style("stroke-dasharray", "3,3")
+    .style("opacity", 1)
+    .attr("y1", 0)
+    .attr("y2", height);
+
+  // append the y line
+  focus.append("line")
+    .attr("class", "y")
+    .style("stroke", "#54e4c4")
+    .style("stroke-dasharray", "3,3")
+    .style("opacity", 0.0)
+    .attr("x1", width)
+    .attr("x2", width);
+
+  // append the circle at the intersection
+  focus.append("circle")
+    .attr("class", "y")
+    .style("fill", "#ffffff")
+    .style("stroke", "#0FACF3")
+    .style("stroke-width", "3px")
+    .attr("r", 5);
+
+  // SHADOW
+  const defs = svgCurve.append("defs");
+
+  // create filter with id #drop-shadow
+  // height=130% so that the shadow is not clipped
+  const filter = defs.append("filter")
+    .attr("id", "drop-shadow")
+    .attr("height", "130%");
+
+  filter.append("feGaussianBlur")
+    .attr("in", "SourceAlpha")
+    .attr("stdDeviation", 4)
+    .attr("result", "blur");
+  filter.append("feOffset")
+    .attr("in", "blur")
+    .attr("dx", 2)
+    .attr("dy", 2)
+    .attr("result", "offsetBlur")
+  filter.append("feFlood")
+    .attr("in", "offsetBlur")
+    .attr("flood-color", "#3d3d3d")
+    .attr("flood-opacity", "0.5")
+    .attr("result", "offsetColor");
+  filter.append("feComposite")
+    .attr("in", "offsetColor")
+    .attr("in2", "offsetBlur")
+    .attr("operator", "in")
+    .attr("result", "offsetBlur");
+
+  const feMerge = filter.append("feMerge");
+
+  feMerge.append("feMergeNode")
+    .attr("in", "offsetBlur")
+  feMerge.append("feMergeNode")
+    .attr("in", "SourceGraphic");
+  // END SHADOW
+
+
+  svgTooltips.append("rect")
+    .attr("x", 13)
+    .attr("y", 13)
+    .attr("height", 122)
+    .attr("width", 208)
+    .style("filter", "url(#drop-shadow)")
+    .attr("fill", "#ffffff")
+    .style("opacity", 0.8)
+    .attr("rx", 5)
+    .attr("ry", 5);
+
+  // place the added at the intersection
+  svgTooltips.append("text")
+    .attr("class", "txtDate")
+    .attr("x", 33)
+    .attr("y", 44)
+    .attr("text-anchor", "left")
+    .style("font-size", "13px")
+    .style("font-weight", "bold")
+    .style("fill", "#404247")
+    .text("14th Oct 2016");
+
+  // added
+  svgTooltips.append("text")
+    .attr("x", 45)
+    .attr("y", 72)
+    .attr("text-anchor", "left")
+    .style("font-size", "12px")
+    .style("fill", "#6A7C87")
+    .text("Added");
+
+  svgTooltips.append("text")
+    .attr("class", "txtAdded")
+    .attr("x", 183)
+    .attr("y", 72)
+    .attr("text-anchor", "right")
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .style("fill", "#404247")
+    .text("99");
+
+  svgTooltips.append("circle")
+    .attr("cx", 36)
+    .attr("cy", 68)
+    .style("fill", "#104e6b")
+    .attr("r", 3)
+
+
+  // ejected
+  svgTooltips.append("text")
+    .attr("x", 45)
+    .attr("y", 95)
+    .attr("text-anchor", "left")
+    .style("font-size", "12px")
+    .style("fill", "#6A7C87")
+    .text("Ejected");
+
+  svgTooltips.append("text")
+    .attr("class", "txtEjected")
+    .attr("x", 183)
+    .attr("y", 95)
+    .attr("text-anchor", "right")
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .style("fill", "#404247")
+    .text("99");
+
+  svgTooltips.append("circle")
+    .attr("cx", 36)
+    .attr("cy", 90)
+    .style("fill", "#3ed234")
+    .attr("r", 3)
+
+  // converted
+  svgTooltips.append("text")
+    .attr("x", 45)
+    .attr("y", 118)
+    .attr("text-anchor", "left")
+    .style("font-size", "12px")
+    .style("fill", "#6A7C87")
+    .text("Converted");
+
+  svgTooltips.append("text")
+    .attr("class", "txtConverted")
+    .attr("x", 183)
+    .attr("y", 118)
+    .attr("text-anchor", "right")
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .style("fill", "#404247")
+    .text("99");
+
+  svgTooltips.append("circle")
+    .attr("cx", 36)
+    .attr("cy", 113)
+    .style("fill", "#23abf4")
+    .attr("r", 3)
+
+  const mouseCover = svgCurve.append("rect")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("class", "geeb")
+    .attr("width", width)
+    .attr('height', height + margin.top + margin.bottom)
+    .attr("fill", "none")
+    .attr('pointer-events', 'none')
+    .on("mouseover", () => {
+      focus.style("display", null);
+      svgTooltips.style("display", null);
+    })
+    .on("mouseout", () => {
+      svgCurve.selectAll(".addedData")
+        .data(data)
+        .select(".addedLine")
+        .transition()
+        .duration(300)
+        .ease(d3.easeCubic)
+        .style("opacity", 1.0)
+      svgCurve.selectAll(".ejectData")
+        .data(data)
+        .select(".ejectLine")
+        .transition()
+        .duration(300)
+        .ease(d3.easeCubic)
+        .style("opacity", 1.0)
+      focus.style("display", 'none');
+      svgTooltips.style("display", 'none');
+    })
+    .on("mousemove", mousemove)
+
+  mouseCover
+    .transition().duration(1500)
+    .transition().attr('pointer-events', 'all')
+
+  function mousemove() {
+    const x0 = x.invert(d3.mouse(this)[0]);
+    const i = bisectDate(data, x0, 1);
+    const d0 = data[i - 1];
+    const d1 = data[i];
+
+    // move tooltip box based on x position
+    if (d3.mouse(this)[0] < (width / 2)) {
+      svgTooltips
+        .transition()
+        .duration(150)
+        .ease(d3.easeLinear)
+        .style('left', 'auto')
+        .style('right', '0')
+    } else {
+      svgTooltips.transition()
+        .duration(150)
+        .ease(d3.easeLinear)
+        .style('left', '0')
+        .style('right', 'auto')
+    }
+
+    const pathEl = path.node();
+
+    const pathLength = pathEl.getTotalLength();
+    const BBox = pathEl.getBBox();
+    const scale = pathLength / BBox.width;
+    const offsetLeft = document.getElementById("cc").offsetLeft;
+
+    const xc = d3.event.pageX - (offsetLeft + margin.left + margin.right + (barWidth - 2));
+    let beginning = xc;
+    let end = pathLength;
+    let target;
+
+    while (true) {
+      target = Math.floor((beginning + end) / 2);
+      pos = pathEl.getPointAtLength(target);
+      if ((target === end || target === beginning) && pos.x !== xc) {
+        break;
+      }
+      if (pos.x > xc) end = target;
+      else if (pos.x < xc) beginning = target;
+      else                break; //position found
+    }
+
+    focus.select("circle.y")
+      .style("display", showConverted ? "block" : "none")
+      .attr("transform",
+        `translate(${pos.x},${pos.y})`);
+
+    focus.select(".x")
+      .style("display", showConverted ? "block" : "none")
+      .attr("transform",
+        `translate(${pos.x},${pos.y})`)
+      .attr("y2", y([0]) - pos.y);
+
+    if (d1) {
+      const d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+      const formatDate = d3.timeFormat("%d %b %Y");
+
+      svgCurve.selectAll(".addedData")
+        .data(data)
+        .select(".addedLine")
+        .transition()
+        .duration(100)
+        .ease(d3.easeCubic)
+        .style("opacity", (data, i) => {
+          return data.date === d.date ? 1.0 : 0.2;
+        })
+      svgCurve.selectAll(".ejectData")
+        .data(data)
+        .select(".ejectLine")
+        .transition()
+        .duration(100)
+        .ease(d3.easeCubic)
+        .style("opacity", (data, i) => {
+          return data.date === d.date ? 1.0 : 0.2;
+        })
+
+      svgTooltips.select("text.txtDate").text(formatDate(d.date));
+      svgTooltips.select("text.txtAdded").text(Math.round(d.added));
+      svgTooltips.select("text.txtEjected").text(Math.round(d.ejected));
+      svgTooltips.select("text.txtConverted").text(Math.round(d.converted));
+    }
+  }
+
+  function toggleAdded() {
+
+    svgCurve.selectAll(".addedData")
+      .data(data)
+      .select(".addedLine")
+      .style("opacity", 1.0)
+
+    svgCurve.selectAll(".addedData")
+      .data(data)
+      .select(".addedLine")
+      .transition()
+      .duration(300)
+      .ease(d3.easeCubic)
+      .attr("d", (data, i) => {
+        return rightRoundedRect(x(data.date), !showAdded ? y(data.added) : y([0]), barWidth, !showAdded ? (y([0]) - y(data.added)) : 0, 3, true, true, false, false)
+      })
+
+    showAdded = !showAdded;
+
+    svgCurve.selectAll(".addedData")
+      .data(data)
+      .select(".addedLine")
+      .transition()
+      .duration(10)
+      .delay(300)
+      .ease(d3.easeCubic)
+      .style("opacity", showAdded ? 1.0 : 0.0)
+
+  }
+
+  function toggleEjected() {
+
+    svgCurve.selectAll(".ejectData")
+      .data(data)
+      .select(".ejectLine")
+      .style("opacity", 1.0)
+
+    svgCurve.selectAll(".ejectData")
+      .data(data)
+      .select(".ejectLine")
+      .transition()
+      .duration(300)
+      .ease(d3.easeCubic)
+      .attr("d", (data, i) => {
+        return rightRoundedRect(x(data.date), y([0]), barWidth, !showEjected ? y([0]) - y(data.ejected) : 0, 3, false, false, true, true)
+      })
+
+    showEjected = !showEjected;
+
+    svgCurve.selectAll(".ejectData")
+      .data(data)
+      .select(".ejectLine")
+      .transition()
+      .duration(10)
+      .delay(300)
+      .ease(d3.easeCubic)
+      .style("opacity", showEjected ? 1.0 : 0.0)
+
+  }
+
+  function toggleConverted() {
+
+    svgCl.selectAll(".convertedAreaG")
+      .data(showConverted ? data : startData)
+      .select(".convertedAreaD")
+      .transition()
+      .duration(300)
+      .attrTween('d', () => {
+        const interpolator = d3.interpolateArray(showConverted ? startData : data, showConverted ? data : startData);
+
+        return t => area(interpolator(t))
+      });
+
+    svgCl.selectAll(".convertedAreaGStroke")
+      .data(showConverted ? data : startData)
+      .select(".convertedAreaDStroke")
+      .transition()
+      .duration(300)
+      .attrTween('d', () => {
+        const interpolator = d3.interpolateArray(showConverted ? startData : data, showConverted ? data : startData);
+
+        return t => area(interpolator(t))
+      });
+
+    showConverted = !showConverted;
+
+  }
+
+</script>
+</body>
+</html>
