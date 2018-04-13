@@ -1,0 +1,119 @@
+# 柱图07
+
+## 说明
+- 数据排序(sort)
+- 源码地址：[codepen](https://codepen.io/tranzfuse/pen/NPqKPr)
+
+## 知识点
+- `d3.v3版本中的rangeBane(scale.ordinal)已经被v4版本中的bandWidth(scaleBand)取代`, [文档地址](https://github.com/d3/d3/blob/master/CHANGES.md)
+- `d3.ascending` 升序排序
+- `descending` 降序排序
+- `d3.sort` 基于数据给文档中的元素排序
+
+## 代码
+````html:250
+<!doctype html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <title>Document</title>
+    <style>
+        svg {
+            border: 1px dotted #999;
+            padding: 1em;
+        }
+        svg rect {
+            fill: black;
+        }
+
+        svg:hover {
+            fill: orange;
+        }
+    </style>
+</head>
+<body>
+
+<h1>D3 Bar chart (sort on click)</h1>
+
+<script src='https://d3js.org/d3.v4.min.js'></script>
+<script>
+  const dataset = [ 5, 10, 13, 19, 21, 25, 22, 18, 15, 13, 11, 12, 15, 20, 18, 17, 16, 18, 23, 25 ]
+  const w = 500
+  const h = 100
+
+  const xScale = d3.scaleBand()
+    .domain(d3.range(dataset.length))
+    .range([0, w])
+    .paddingInner(0.05)
+
+  const yScale = d3.scaleLinear()
+    .domain([0, d3.max(dataset)])
+    .range([0, h])
+
+  const svg = d3.select('body')
+    .append('svg')
+    .attr('width', w)
+    .attr('height', h)
+
+  /********************  render 柱子 ******************/
+
+  svg.selectAll('rect')
+    .data(dataset)
+    .enter()
+    .append('rect')
+    .attr('x', (d, i) => xScale(i))
+    .attr('y', d => h - yScale(d))
+    .attr('width', xScale.bandwidth())
+    .attr('height', d => yScale(d))
+    .attr('fill', '#000')
+    .on('click', function() {
+      sortBars()
+    })
+
+  /********************  render 文字 ******************/
+
+  svg.selectAll('text')
+    .data(dataset)
+    .enter()
+    .append('text')
+    .style('pointer-events', 'none')
+    .text(d => d)
+    .attr('text-anchor', 'middle')
+    .attr('x', (d, i) => xScale(i) + xScale.bandwidth() / 2)
+    .attr('y', d => h - yScale(d) + 14)
+    .attr('font-family', 'sans-serif')
+    .attr('font-size', '11px')
+    .attr('fill', 'white')
+
+
+  let sortOrder = false
+
+  const sortBars = function() {
+    sortOrder = !sortOrder
+
+    svg.selectAll('rect')
+      .sort((a, b) => sortCallback(a, b, sortOrder)) // 基于数据给文档中的元素排序
+      .transition()
+      .delay((d, i) => i * 50)
+      .duration(1000)
+      .attr('x', (d, i) => xScale(i))
+
+    svg.selectAll('text')
+      .sort((a, b) => sortCallback(a, b, sortOrder))
+      .transition()
+      .delay((d, i) => i * 50)
+      .duration(1000)
+      .attr('x', (d, i) => xScale(i) + xScale.bandwidth() / 2)
+  }
+
+  const sortCallback = function(a, b, order) {
+    if (order) {
+      return d3.ascending(a, b)  // 升序排序
+    } else {
+      return d3.descending(a, b) // 降序排序
+    }
+  }
+</script>
+</body>
+</html>
+````
