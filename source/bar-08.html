@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <title>Document</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+        }
+
+        text {
+            font-size: 1rem;
+        }
+
+        .domain {
+            stroke: rgb(207, 207, 207);
+        }
+
+        .label {
+            fill: rgb(100, 100, 100);
+        }
+    </style>
+</head>
+<body>
+
+<script src='https://d3js.org/d3.v4.min.js'></script>
+<script>
+  const dataset = [
+    { apples: 5, oranges: 10, grapes: 4, pears: 10, bananas: 6 },
+    { apples: 4, oranges: 12, grapes: 7, pears: 13, bananas: 32 },
+    { apples: 21, oranges: 19, grapes: 2, pears: 2, bananas: 7 },
+    { apples: 7, oranges: 23, grapes: 8, pears: 4, bananas: 3 },
+    { apples: 5, oranges: 10, grapes: 12, pears: 5, bananas: 9 },
+    { apples: 4, oranges: 12, grapes: 8, pears: 7, bananas: 3 },
+    { apples: 15, oranges: 10, grapes: 14, pears: 8, bananas: 0 },
+    { apples: 4, oranges: 12, grapes: 44, pears: 21, bananas: 11 },
+    { apples: 21, oranges: 19, grapes: 11, pears: 10, bananas: 11 },
+    { apples: 7, oranges: 23, grapes: 43, pears: 2, bananas: 7 },
+    { apples: 23, oranges: 19, grapes: 22, pears: 11, bananas: 6 },
+    { apples: 7, oranges: 23, grapes: 5, pears: 8, bananas: 3 },
+    { apples: 5, oranges: 10, grapes: 12, pears: 5, bananas: 9 },
+    { apples: 4, oranges: 12, grapes: 8, pears: 7, bananas: 3 },
+    { apples: 15, oranges: 10, grapes: 14, pears: 8, bananas: 0 },
+    { apples: 23, oranges: 17, grapes: 17, pears: 17, bananas: 1 }
+  ]
+
+  const margin = {top: 50, right: 50, bottom: 50, left: 70},
+    w = 960 - margin.left - margin.right,
+    h = 500 - margin.top - margin.bottom
+
+  var colors = ['rgb(0, 168, 192)', 'rgb(98, 57, 250)', 'rgb(17, 60, 68)', 'rgb(2, 176, 143)', 'rgb(18, 110, 128)']
+
+  var colors = d3.scaleOrdinal(colors)
+
+  const stack = d3.stack()
+    .keys([ 'apples', 'oranges', 'grapes', 'pears', 'bananas'])
+
+  const series = stack(dataset)
+
+  const xScale = d3.scaleBand()
+    .domain(d3.range(dataset.length))
+    .range([0, w])
+    .paddingInner(0.25)
+    .paddingOuter(0.35)
+
+  const yScale = d3.scaleLinear()
+    .domain([0, d3.max(dataset, d => d.apples + d.oranges + d.grapes + d.pears + d.bananas)])
+    .range([h, 0])
+
+  const svg = d3.select('body').append('svg')
+    .attr('width', w + margin.left + margin.right)
+    .attr('height', h + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left}, ${margin.top})`)
+
+  const axis = svg.append('g')
+    .attr('class', 'axis')
+
+  const bars = svg.append('g')
+    .attr('class', 'bars')
+
+  const rangeData= d3.range(10, 100, 10)
+
+  const grid = axis.append('g')
+    .attr('class', 'grid')
+
+  grid.selectAll('line.grid-line')
+    .data(rangeData)
+    .enter()
+    .append('line')
+    .attr('x1', '0%')
+    .attr('x2', w)
+    .attr('y1', d => yScale(d))
+    .attr('y2', d => yScale(d))
+    .attr('stroke-width', 1)
+    .attr('stroke', 'rgb(207, 207, 207)')
+
+
+  //// Axis ////
+  svg.append('g')
+    .attr('transform', 'translate(0,' + h + ')')
+    .call(d3.axisBottom(xScale)
+      .tickPadding(12)
+      .tickSizeInner(0)
+      .tickSizeOuter(0))
+
+  svg.append('g')
+    .call(d3.axisLeft(yScale)
+      .ticks(10)
+      .tickPadding(12)
+      .tickSizeInner(0)
+      .tickSizeOuter(0))
+
+
+  const groups = bars.selectAll('g')
+    .data(series)
+    .enter()
+    .append('g')
+    .style('fill', (d, i) => colors(i))
+
+  const rects = groups.selectAll('rect')
+    .data(d => d)
+    .enter()
+    .append('rect')
+    .attr('x', (d, i) => xScale(i))
+    .attr('y', d => yScale(d[1]))
+    .attr('height', d => yScale(d[0]) - yScale(d[1]))
+    .attr('width', xScale.bandwidth())
+</script>
+</body>
+</html>
